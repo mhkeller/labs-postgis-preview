@@ -8,12 +8,14 @@ function getLayerConfig(data, geometryType) {
   if (data.features) { // check for geoJson
     layerConfig = {
       ...layerConfig,
+
       source: {
         type: 'geojson',
         data,
       },
     };
   } else { // else it's an array of MVT templates
+    console.log('is vector');
     layerConfig = {
       ...layerConfig,
       source: {
@@ -24,7 +26,10 @@ function getLayerConfig(data, geometryType) {
     };
   }
 
+  console.log('other testing');
+
   if (['Polygon', 'MultiPolygon'].includes(geometryType)) {
+    console.log('has polygon');
     layerConfig = {
       ...layerConfig,
       type: 'fill',
@@ -37,25 +42,55 @@ function getLayerConfig(data, geometryType) {
   }
 
   if (['LineString', 'MultiLineString'].includes(geometryType)) {
+    console.log('has linestring');
+
     layerConfig = {
       ...layerConfig,
       type: 'line',
       paint: {
-        'line-color': 'rgba(52, 161, 255, 1)',
-        'line-width': '5',
+        'line-color': 'blue',
+        'line-width': 5,
         'line-opacity': 0.7,
+        'line-gradient': [
+          'interpolate',
+          ['linear'],
+          ['line-progress'],
+          0, 'blue',
+          0.1, 'royalblue',
+          0.3, 'cyan',
+          0.5, 'lime',
+          0.7, 'yellow',
+          1, 'red',
+        ],
       },
     };
+    layerConfig.source.lineMetrics = true;
   }
 
   if (['Point', 'MultiPoint'].includes(geometryType)) {
+    console.log('has multipoint');
+
     layerConfig = {
       ...layerConfig,
       type: 'circle',
       paint: {
-        'circle-radius': 2.5,
-        'circle-color': 'rgba(52, 161, 255, 1)',
+        'circle-radius': 4,
         'circle-opacity': 0.6,
+        // 'circle-color': 'rgba(52, 161, 255, 1)',
+        'circle-color': [
+          'interpolate',
+          ['linear'],
+          ['get', 'utc_timest'],
+          1506866400, '#9ebcda',
+          // 500000, '#EED322',
+          // 750000, '#E6B71E',
+          // 1000000, '#DA9C20',
+          // 2500000, '#CA8323',
+          // 5000000, '#B86B25',
+          // 7500000, '#A25626',
+          // 10000000, '#8B4225',
+          1506891600, '#810f7c',
+        ],
       },
     };
   }
@@ -90,8 +125,8 @@ class Map extends React.Component { // eslint-disable-line
   componentDidMount() {
     this.map = new mapboxgl.Map({
       container: 'map',
-      // style: '//raw.githubusercontent.com/NYCPlanning/labs-gl-style/master/data/style.json',
-      style: 'https://maps.tilehosting.com/styles/darkmatter/style.json?key=2F8nWorAsHivJ6MEwNs6',
+      style: '../styles/nycplanning.json',
+      // style: 'https://maps.tilehosting.com/styles/darkmatter/style.json?key=2F8nWorAsHivJ6MEwNs6',
       hash: true,
       zoom: 6.73,
       center: [-73.265, 40.847],
@@ -134,6 +169,7 @@ class Map extends React.Component { // eslint-disable-line
 
   addJsonLayer(geoJson, geometryType, geometriesAboveLabels) {
     removeLayers(this.map, this);
+    console.log('getting layer config');
     const layerConfig = getLayerConfig(geoJson, geometryType);
     this.map.addLayer(layerConfig, getBeforeLayer(geometriesAboveLabels));
 
