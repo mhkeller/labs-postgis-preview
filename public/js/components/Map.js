@@ -115,7 +115,57 @@ function getBeforeLayer(geometriesAboveLabels) {
   return geometriesAboveLabels ? null : 'place_other';
 }
 
+class Tooltip extends React.Component {  // eslint-disable-line
+  render() {
+    const { features } = this.props;
+
+    const featureElement = (feature, selectedAttribute) => (
+      <div className='color-gray-light' key={selectedAttribute}>
+        {selectedAttribute}: {feature.properties[selectedAttribute]}
+      </div>
+    );
+
+    const renderFeature = (feature, i) => {
+      const featureKeys = Object.keys(feature.properties);
+      const featureList = featureKeys.map(selectedAttribute => featureElement(feature, selectedAttribute));
+
+      return (
+        <div key={i}>
+          <strong className='mr3'>Selected Feature Attributes:</strong>
+          {featureList}
+        </div>
+      );
+    };
+
+    return (
+      <div className="flex-parent-inline flex-parent--center-cross flex-parent--column absolute bottom">
+        <div className="flex-child px12 py12 bg-gray-dark color-white shadow-darken10 round txt-s w240 clip txt-truncate">
+          {features.map(renderFeature)}
+        </div>
+        <span className="flex-child color-gray-dark triangle triangle--d"></span>
+      </div>
+    );
+  }
+}
+
 class Map extends React.Component { // eslint-disable-line
+  tooltipContainer;
+
+  setTooltip(features) {
+    if (features.length) {
+      ReactDOM.render(
+        React.createElement(
+          Tooltip, {
+            features,
+          },
+        ),
+        this.tooltipContainer,
+      );
+    } else {
+      this.tooltipContainer.innerHTML = '';
+    }
+  }
+
   constructor(props) {
     super(props);
 
@@ -123,6 +173,8 @@ class Map extends React.Component { // eslint-disable-line
   }
 
   componentDidMount() {
+    this.tooltipContainer = document.createElement('div');
+
     this.map = new mapboxgl.Map({
       container: 'map',
       style: '../styles/nycplanning.json',
@@ -133,6 +185,17 @@ class Map extends React.Component { // eslint-disable-line
     });
 
     window.map = this.map;
+
+    const tooltip = new mapboxgl.Marker(this.tooltipContainer, {
+      offset: [-120, 0],
+    }).setLngLat([0, 0]).addTo(this.map);
+
+    this.map.on('mousemove', (e) => {
+      const features = this.map.queryRenderedFeatures(e.point).filter(i => i.layer.id === 'postgis-preview');
+      tooltip.setLngLat(e.lngLat);
+      this.map.getCanvas().style.cursor = features.length ? 'pointer' : '';
+      this.setTooltip(features);
+    });
   }
 
   componentWillReceiveProps(nextProps) {
@@ -169,7 +232,6 @@ class Map extends React.Component { // eslint-disable-line
 
   addJsonLayer(geoJson, geometryType, geometriesAboveLabels) {
     removeLayers(this.map, this);
-    console.log('getting layer config');
     const layerConfig = getLayerConfig(geoJson, geometryType);
     this.map.addLayer(layerConfig, getBeforeLayer(geometriesAboveLabels));
 
